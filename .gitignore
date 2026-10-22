@@ -1,0 +1,9 @@
+# Backups and build artifacts — never commit
+backups/
+__pycache__/
+*.pyc
+*.apk
+*.idsig
+*.keystore
+*.log
+.DS_Store
