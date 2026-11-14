@@ -233,7 +233,8 @@ def build_patched(package, base_apk, workdir, rules, auto_rules):
     patch_apk.disable_mobileads(dec)
     patch_apk.disable_banners(dec)
     patch_apk.disable_ad_loads(dec)
-    patch_apk.disable_ad_unit_ids(dec)
+    patch_apk.disable_ad_ids(dec)
+    patch_apk.fix_null_bitmaps(dec)
 
     if auto_rules:
         data = gen_rules.build_rules(dec, package)
@@ -285,7 +286,11 @@ def apk_mode(serial, package, yes, rules, auto_rules, workdir, backup_root,
     to_install = [patched_base] + originals[1:]
     signed = sign_all(to_install, workdir)
 
-    install_cmd = adb + ["install-multiple", "-r"] + [str(p) for p in signed]
+    # --user 0: main space only (Samsung Secure Folder = user 150, Dual App
+    # = user 95).  -i com.android.vending: several apps refuse to run or send
+    # the user to the Play listing when the installer is not the Play Store.
+    install_cmd = adb + ["install-multiple", "--user", "0", "-r",
+                         "-i", "com.android.vending"] + [str(p) for p in signed]
     if no_install:
         print("\n[i] Built only. Install with:")
         print("    adb uninstall", package)

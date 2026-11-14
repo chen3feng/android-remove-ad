@@ -14,12 +14,53 @@ What it does (all patches are no-ops, the rest of the app is untouched):
   5. App-specific rules (e.g. "never take the splash-ad branch").
 """
 import argparse
+import base64
 import json
 import re
 import sys
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent
+
+# 1x1 transparent RGBA PNG used to repair bitmap drawables whose source lives
+# in an APK density split (apktool decodes only the base, so the reference
+# becomes @null and the drawable crashes the app at inflate time).
+TRANSPARENT_PNG = base64.b64decode(
+    "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk"
+    "YPhfDwAChwGA60e6kgAAAABJRU5ErkJggg=="
+)
+
+
+def fix_null_bitmaps(dec: Path) -> None:
+    """Give every <bitmap android:src="@null"> a transparent source.
+
+    apktool only decodes the base APK; when an app ships its density-specific
+    resources in split APKs, references to them decompile as @null.  A
+    BitmapDrawable with a null src throws Resources$NotFoundException when the
+    drawable is inflated, so replace those references with a transparent 1x1
+    PNG we add to the base.
+    """
+    res = dec / "res"
+    if not res.is_dir():
+        print("[=] no decoded resources; skipping null-bitmap repair")
+        return
+    png = res / "drawable" / "adfree_transparent.png"
+    if not png.exists():
+        png.parent.mkdir(parents=True, exist_ok=True)
+        png.write_bytes(TRANSPARENT_PNG)
+    fixed = 0
+    for xml in res.rglob("*.xml"):
+        try:
+            text = xml.read_text(errors="ignore")
+        except OSError:
+            continue
+        if "<bitmap" not in text or 'android:src="@null"' not in text:
+            continue
+        text = text.replace('android:src="@null"',
+                            'android:src="@drawable/adfree_transparent"')
+        xml.write_text(text)
+        fixed += 1
+    print(f"[+] null-bitmap repair: {fixed} drawable file(s) -> transparent")
 
 
 def method_decls(smali: Path):
@@ -75,7 +116,14 @@ def find_class(dec: Path, descriptor: str) -> Path | None:
 
 def bypass_pairip(dec: Path) -> None:
     manifest = dec / "AndroidManifest.xml"
-    text = manifest.read_text()
+    raw = manifest.read_bytes()
+    if raw[:2] == b"\x03\x00":
+        # Raw-resource decode (`apktool d -r`): the manifest stays binary and
+        # cannot be edited as text. Callers use this mode only for apps whose
+        # resources must not be recompiled; they must not need PairIP bypass.
+        print("[=] manifest is binary (raw resources); PairIP bypass skipped")
+        return
+    text = raw.decode("utf-8", "replace")
     if 'android:name="com.pairip.application.Application"' not in text:
         print("[=] PairIP wrapper not present")
         return
@@ -140,33 +188,40 @@ def disable_banners(dec: Path) -> None:
                 print(f"[+] banner load disabled: {sig}")
 
 
-def disable_ad_unit_ids(dec: Path) -> None:
-    """Null out AdMob ad unit IDs.
+def disable_ad_ids(dec: Path) -> None:
+    """Null out AdMob app IDs and ad unit IDs.
 
-    The new Google Mobile Ads SDK is often R8-repackaged (e.g. under
-    ``ads_mobile_sdk``), so the class-based patches above cannot find it.
-    Replacing every ``ca-app-pub-<id>/<unit>`` with a zero unit makes all
-    requests unfillable while leaving the app otherwise untouched.
+    Some apps ship real AdMob app IDs / unit IDs as constants; others get them
+    from Firebase Remote Config at runtime. Nulling the *app ID* breaks AdMob
+    initialisation itself, so even remotely-served unit IDs can no longer fill.
     """
-    replacement = "ca-app-pub-0000000000000000/0000000000"
-    pattern = re.compile(r"ca-app-pub-\d{16}/\d+")
+    patterns = [
+        (r"ca-app-pub-\d{16}~\d{10}", "ca-app-pub-0000000000000000~0000000000"),
+        (r"ca-app-pub-\d{16}/\d+", "ca-app-pub-0000000000000000/0000000000"),
+    ]
     count = 0
-    for d in smali_dirs(dec):
-        for f in d.rglob("*.smali"):
+    for pattern, replacement in patterns:
+        rx = re.compile(pattern)
+        for d in smali_dirs(dec):
+            for f in d.rglob("*.smali"):
+                text = f.read_text(errors="ignore")
+                new, n = rx.subn(replacement, text)
+                if n:
+                    f.write_text(new)
+                    count += n
+        for f in (dec / "res").rglob("*.xml"):
             text = f.read_text(errors="ignore")
-            new, n = pattern.subn(replacement, text)
+            new, n = rx.subn(replacement, text)
             if n:
                 f.write_text(new)
                 count += n
-    # IDs sometimes live in string resources instead of code.
-    for f in (dec / "res").rglob("*.xml"):
-        text = f.read_text(errors="ignore")
-        new, n = pattern.subn(replacement, text)
-        if n:
-            f.write_text(new)
-            count += n
     if count:
-        print(f"[+] ad unit ids nulled: {count}")
+        print(f"[+] ad app/unit ids nulled: {count}")
+
+
+# Backwards-compatible alias kept for older wrappers.
+def disable_ad_unit_ids(dec: Path) -> None:
+    disable_ad_ids(dec)
 
 
 def disable_ad_loads(dec: Path) -> None:
@@ -229,6 +284,8 @@ def main() -> None:
     disable_mobileads(dec)
     disable_banners(dec)
     disable_ad_loads(dec)
+    disable_ad_ids(dec)
+    fix_null_bitmaps(dec)
     if args.rules:
         apply_rules(dec, args.rules)
     print("[done]")
