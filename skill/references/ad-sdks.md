@@ -90,7 +90,8 @@ working. (The standalone `disable_ad_unit_ids()` name is kept as an alias.)
 ### Null the APP id when units come from Remote Config
 
 Some apps keep the app ID in a resource (`ph_admob_app_id`,
-`GOOGLE_ADMOB_APPLICATION_ID`, …) but ship the unit IDs as **zero constants**,
+`GOOGLE_ADMOB_APPLICATION_ID`, …), often referenced from the manifest as
+`@string/admob_app_id`, but ship the unit IDs as **zero constants**,
 fetching the real units from Firebase Remote Config keys such as
 `ad_unit_admob_banner` / `ad_unit_admob_interstitial` /
 `ad_unit_admob_native` / `ad_unit_admob_rewarded`. When the device has no
@@ -100,7 +101,10 @@ cached Remote Config value (or the fetch is blocked), logcat shows
 Replacing only unit literals does nothing in that case — they are already
 zero. Nulling the **app ID** is what breaks init: GMA logs
 `Not retrying to fetch app settings` and all loads end with no-fill. This is
-why `disable_ad_ids()` always replaces both patterns.
+why `disable_ad_ids()` always replaces both patterns. It scans smali,
+`res/**/*.xml` and `AndroidManifest.xml`, because the app ID can sit in
+`res/values/strings.xml` behind a manifest `@string/...` reference or be
+hardcoded directly in a manifest `<meta-data>` value.
 
 ### AdMob-mediated other SDKs
 

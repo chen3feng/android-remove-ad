@@ -209,7 +209,14 @@ def disable_ad_ids(dec: Path) -> None:
                 if n:
                     f.write_text(new)
                     count += n
-        for f in (dec / "res").rglob("*.xml"):
+        # The manifest is not under res/ and some apps hardcode the AdMob app
+        # ID in <meta-data android:name="com.google.android.gms.ads.APPLICATION_ID">
+        # instead of pointing at a string resource.
+        xml_files = list((dec / "res").rglob("*.xml"))
+        manifest = dec / "AndroidManifest.xml"
+        if manifest.exists() and manifest.read_bytes()[:2] != b"\x03\x00":
+            xml_files.append(manifest)
+        for f in xml_files:
             text = f.read_text(errors="ignore")
             new, n = rx.subn(replacement, text)
             if n:
