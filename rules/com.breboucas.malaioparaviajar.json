@@ -1,0 +1,14 @@
+{
+  "rules": [
+    {"class": "Lcom/bytedance/sdk/openadsdk/api/banner/PAGBannerAd;", "method": "loadAd(Ljava/lang/String;Lcom/bytedance/sdk/openadsdk/api/banner/PAGBannerRequest;Lcom/bytedance/sdk/openadsdk/api/banner/PAGBannerAdLoadCallback;)V", "return": "void"},
+    {"class": "Lcom/bytedance/sdk/openadsdk/api/banner/PAGBannerAd;", "method": "loadAd(Ljava/lang/String;Lcom/bytedance/sdk/openadsdk/api/banner/PAGBannerRequest;Lcom/bytedance/sdk/openadsdk/api/banner/PAGBannerAdLoadListener;)V", "return": "void"},
+    {"class": "Lcom/bytedance/sdk/openadsdk/api/nativeAd/PAGNativeAd;", "method": "loadAd(Ljava/lang/String;Lcom/bytedance/sdk/openadsdk/api/nativeAd/PAGNativeRequest;Lcom/bytedance/sdk/openadsdk/api/nativeAd/PAGNativeAdLoadCallback;)V", "return": "void"},
+    {"class": "Lcom/bytedance/sdk/openadsdk/api/nativeAd/PAGNativeAd;", "method": "loadAd(Ljava/lang/String;Lcom/bytedance/sdk/openadsdk/api/nativeAd/PAGNativeRequest;Lcom/bytedance/sdk/openadsdk/api/nativeAd/PAGNativeAdLoadListener;)V", "return": "void"},
+    {"class": "Lcom/unity3d/services/banners/UnityBanners;", "method": "loadBanner(Landroid/app/Activity;Ljava/lang/String;)V", "return": "void"},
+    {"class": "Lcom/unity3d/ads/BannerAd$Companion;", "method": "load(Lcom/unity3d/ads/BannerConfiguration;Lcom/unity3d/ads/LoadListener;)V", "return": "void"},
+    {"class": "Lio/flutter/plugins/googlemobileads/FlutterAdLoader;", "method": "loadNativeAd(Ljava/lang/String;Lmd/b;Lmd/d;Lxc/e;Lxc/h;)V", "return": "void"},
+    {"class": "Lio/flutter/plugins/googlemobileads/FlutterAdLoader;", "method": "loadAdManagerNativeAd(Ljava/lang/String;Lmd/b;Lmd/d;Lxc/e;Lyc/b;)V", "return": "void"},
+    {"class": "Lio/flutter/plugins/googlemobileads/FlutterNativeAd;", "method": "load()V", "return": "void"},
+    {"class": "Lio/flutter/plugins/googlemobileads/FlutterBannerAd;", "method": "load()V", "return": "void"}
+  ]
+}

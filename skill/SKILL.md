@@ -64,9 +64,12 @@ The script:
 5. auto-generates and applies rules for AppLovin MAX, Unity Ads, Meta, Vungle,
    Yandex, ironSource/LevelPlay, Chartboost, InMobi, AdColony, Tapjoy, Pangle,
    Mintegral, Smaato, Fyber and Amazon Ads (`gen_rules.py`);
-   also replaces AdMob ad unit IDs (`ca-app-pub-.../...`) with zero units —
-   the fallback for the new Google Mobile Ads SDK, whose classes are often
-   R8-repackaged under `ads_mobile_sdk` and cannot be found by class patches;
+   also nulls AdMob IDs (`ca-app-pub-.../...` units and `ca-app-pub-...~...`
+   app ID) — the fallback for the new Google Mobile Ads SDK, whose classes are
+   often R8-repackaged under `ads_mobile_sdk` and cannot be found by class
+   patches. Nulling the **app ID** is what stops apps whose unit IDs arrive
+   via Firebase Remote Config: GMA then logs `Ad failed to load : 3`
+   (no-fill) and mediation adapters never serve;
 6. applies `rules/<package>.json` if present (app-specific extras);
 7. rebuilds, re-signs base + splits with `~/.android/adfree.keystore`;
 8. uninstalls the original and installs the patched build with `install-multiple`.
